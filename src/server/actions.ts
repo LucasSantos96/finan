@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { prisma } from './db'
-import { addMonthsClamped, ensureGenerated, planInstallments } from './recurrence'
+import { addMonthsClamped, ensureGenerated } from './recurrence'
 import { parseBRL } from '@/lib/money'
 import { parseDateInput, todayUtc } from '@/lib/dates'
 import type { TxType } from '@/lib/types'
@@ -92,11 +92,12 @@ export async function createTransaction(input: TxInput): Promise<Result> {
 
   const n = Math.trunc(input.installments)
   if (!(n >= 2 && n <= 120)) return fail('Parcelas devem ser entre 2 e 120.')
-  // Income: the amount is received in each installment. Expense: the amount is the total, split.
-  const plan =
-    input.type === 'INCOME'
-      ? Array.from({ length: n }, (_, i) => ({ no: i + 1, date: addMonthsClamped(v.date, i), amountCents: v.cents }))
-      : planInstallments(v.date, v.cents, n)
+  // The amount is the value of each installment (income and expense alike).
+  const plan = Array.from({ length: n }, (_, i) => ({
+    no: i + 1,
+    date: addMonthsClamped(v.date, i),
+    amountCents: v.cents,
+  }))
   const rec = await prisma.recurrence.create({
     data: {
       kind: 'INSTALLMENT',

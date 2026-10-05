@@ -2,9 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   addMonthsClamped,
   ensureGenerated,
-  planInstallments,
   planRecurring,
-  splitInstallments,
 } from './recurrence'
 
 const d = (s: string) => new Date(`${s}T00:00:00Z`)
@@ -20,33 +18,6 @@ describe('addMonthsClamped', () => {
   it('handles leap years and year rollover', () => {
     expect(iso(addMonthsClamped(d('2028-01-31'), 1))).toBe('2028-02-29')
     expect(iso(addMonthsClamped(d('2026-11-15'), 3))).toBe('2027-02-15')
-  })
-})
-
-describe('splitInstallments', () => {
-  it('spreads leftover cents one per part from the first, and sums exactly', () => {
-    expect(splitInstallments(10000, 3)).toEqual([3334, 3333, 3333])
-    expect(splitInstallments(10000, 4)).toEqual([2500, 2500, 2500, 2500])
-    expect(splitInstallments(1, 3).reduce((a, b) => a + b, 0)).toBe(1)
-  })
-
-  it('does not dump all leftover cents on the first part (R$ 1.000,00 in 36)', () => {
-    const parts = splitInstallments(100000, 36)
-    expect(parts.slice(0, 28).every((p) => p === 2778)).toBe(true)
-    expect(parts.slice(28).every((p) => p === 2777)).toBe(true)
-    expect(parts.reduce((a, b) => a + b, 0)).toBe(100000)
-    expect(Math.max(...parts) - Math.min(...parts)).toBe(1)
-  })
-})
-
-describe('planInstallments', () => {
-  it('numbers parts and spaces them monthly', () => {
-    const plan = planInstallments(d('2026-10-31'), 10000, 3)
-    expect(plan.map((p) => [p.no, iso(p.date), p.amountCents])).toEqual([
-      [1, '2026-10-31', 3334],
-      [2, '2026-11-30', 3333],
-      [3, '2026-12-31', 3333],
-    ])
   })
 })
 

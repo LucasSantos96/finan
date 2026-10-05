@@ -42,7 +42,7 @@ export default async function Recorrentes() {
                     <td>{r.kind === 'RECURRING' ? 'Mensal' : `${r.total}x`}</td>
                     <td className="text-right tabular-nums">
                       {formatBRL(r.amountCents)}
-                      {r.kind === 'INSTALLMENT' && <span className="text-xs text-[var(--muted)]"> total</span>}
+                      {r.kind === 'INSTALLMENT' && <span className="text-xs text-[var(--muted)]"> /parcela</span>}
                     </td>
                     <td className="pl-4 text-[var(--muted)]">{r.nextDate ? formatDate(r.nextDate) : '—'}</td>
                     <td className="text-right tabular-nums">

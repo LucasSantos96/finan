@@ -8,20 +8,6 @@ export function addMonthsClamped(start: Date, n: number): Date {
   return new Date(Date.UTC(y, m, Math.min(start.getUTCDate(), lastDay)))
 }
 
-export function splitInstallments(totalCents: number, n: number): number[] {
-  const base = Math.floor(totalCents / n)
-  const extra = totalCents - base * n
-  return Array.from({ length: n }, (_, i) => base + (i < extra ? 1 : 0))
-}
-
-export function planInstallments(startDate: Date, totalCents: number, count: number) {
-  return splitInstallments(totalCents, count).map((amountCents, i) => ({
-    no: i + 1,
-    date: addMonthsClamped(startDate, i),
-    amountCents,
-  }))
-}
-
 export function planRecurring(args: {
   startDate: Date
   endDate: Date | null
