@@ -37,6 +37,12 @@ describe('parseBRL', () => {
     expect(parseBRL(input)).toBe(cents)
   })
 
+  it('rejects amounts above the 32-bit cents limit stored in the database', () => {
+    expect(parseBRL('21.474.836,47')).toBe(2147483647)
+    expect(parseBRL('21.474.836,48')).toBeNull()
+    expect(parseBRL('99.999.999,99')).toBeNull()
+  })
+
   it.each(['', '  ', 'abc', '-5', '0', '1,2,3', '12,345'])('rejects %j', (input) => {
     expect(parseBRL(input)).toBeNull()
   })

@@ -84,7 +84,23 @@ describe('ensureGenerated', () => {
     const rows: { date: Date; isPaid: boolean }[] = []
     const db = {
       recurrence: {
-        findMany: async () => [rec],
+        findMany: async () => {
+          const snapshot = { ...rec }
+          await Promise.resolve() // yield, so concurrent callers read the same state
+          return [snapshot]
+        },
+        updateMany: async ({
+          where,
+          data,
+        }: {
+          where: { lastGeneratedUntil: Date | null }
+          data: { lastGeneratedUntil: Date }
+        }) => {
+          if ((where.lastGeneratedUntil?.getTime() ?? null) !== (rec.lastGeneratedUntil?.getTime() ?? null))
+            return { count: 0 }
+          rec.lastGeneratedUntil = data.lastGeneratedUntil
+          return { count: 1 }
+        },
         update: async ({ data }: { data: { lastGeneratedUntil: Date } }) => {
           rec.lastGeneratedUntil = data.lastGeneratedUntil
         },
@@ -94,7 +110,8 @@ describe('ensureGenerated', () => {
           rows.push({ date: data.date, isPaid: data.isPaid })
         },
       },
-      $transaction: async (ops: Promise<unknown>[]) => Promise.all(ops),
+      $transaction: async (arg: unknown) =>
+        typeof arg === 'function' ? arg(db) : Promise.all(arg as Promise<unknown>[]),
     }
     return { db: db as never, rows }
   }
@@ -106,6 +123,12 @@ describe('ensureGenerated', () => {
     expect(rows[0].isPaid).toBe(true) // date <= today
     expect(rows[1].isPaid).toBe(false)
     await ensureGenerated(db, d('2026-10-05'))
+    expect(rows).toHaveLength(13)
+  })
+
+  it('does not duplicate when two requests generate concurrently', async () => {
+    const { db, rows } = fakeDb()
+    await Promise.all([ensureGenerated(db, d('2026-10-05')), ensureGenerated(db, d('2026-10-05'))])
     expect(rows).toHaveLength(13)
   })
 

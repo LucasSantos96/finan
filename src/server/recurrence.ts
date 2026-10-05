@@ -52,9 +52,15 @@ export async function ensureGenerated(db: PrismaClient, today: Date = todayUtc()
       horizon,
     })
     if (dates.length === 0) continue
-    await db.$transaction([
-      ...dates.map((date) =>
-        db.transaction.create({
+    // Claim the range first (compare-and-set) so concurrent requests can't both create it.
+    await db.$transaction(async (tx) => {
+      const claimed = await tx.recurrence.updateMany({
+        where: { id: r.id, lastGeneratedUntil: r.lastGeneratedUntil },
+        data: { lastGeneratedUntil: dates[dates.length - 1] },
+      })
+      if (claimed.count === 0) return
+      for (const date of dates) {
+        await tx.transaction.create({
           data: {
             type: r.type,
             amountCents: r.amountCents,
@@ -65,12 +71,8 @@ export async function ensureGenerated(db: PrismaClient, today: Date = todayUtc()
             isPaid: date <= today,
             tags: { connect: r.tags.map((t) => ({ id: t.id })) },
           },
-        }),
-      ),
-      db.recurrence.update({
-        where: { id: r.id },
-        data: { lastGeneratedUntil: dates[dates.length - 1] },
-      }),
-    ])
+        })
+      }
+    })
   }
 }

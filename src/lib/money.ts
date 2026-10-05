@@ -1,3 +1,5 @@
+/** Prisma Int column is 32-bit signed. */
+const MAX_CENTS = 2_147_483_647
 const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
 export function formatBRL(cents: number): string {
@@ -34,5 +36,5 @@ export function parseBRL(input: string): number | null {
     return null
   }
   const cents = Math.round(Number(s) * 100)
-  return Number.isFinite(cents) && cents > 0 ? cents : null
+  return Number.isFinite(cents) && cents > 0 && cents <= MAX_CENTS ? cents : null
 }

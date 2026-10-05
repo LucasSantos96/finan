@@ -92,22 +92,28 @@ export function DrawerProvider({
     setBusy(true)
     setError('')
     const tagList = tags.split(',')
-    const res = editing
-      ? await updateTransaction(
-          editing.id,
-          { amount, description, categoryId, date, tags: tagList, isPaid },
-          scope,
-        )
-      : await createTransaction({
-          type,
-          amount,
-          description,
-          categoryId,
-          date,
-          tags: tagList,
-          repeat,
-          installments,
-        })
+    let res
+    try {
+      res = editing
+        ? await updateTransaction(
+            editing.id,
+            { amount, description, categoryId, date, tags: tagList, isPaid },
+            scope,
+          )
+        : await createTransaction({
+            type,
+            amount,
+            description,
+            categoryId,
+            date,
+            tags: tagList,
+            repeat,
+            installments,
+          })
+    } catch {
+      setBusy(false)
+      return setError('Não foi possível salvar. Confira o valor e tente de novo.')
+    }
     setBusy(false)
     if (!res.ok) return setError(res.error)
     router.refresh()
