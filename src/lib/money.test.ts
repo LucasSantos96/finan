@@ -1,5 +1,28 @@
 import { describe, expect, it } from 'vitest'
-import { parseBRL } from './money'
+import { maskBRL, parseBRL } from './money'
+
+describe('maskBRL', () => {
+  it.each([
+    ['', ''],
+    ['abc', ''],
+    ['0', ''],
+    ['1', '0,01'],
+    ['12', '0,12'],
+    ['123', '1,23'],
+    ['100000', '1.000,00'],
+    ['1234567', '12.345,67'],
+    ['1.000,00', '1.000,00'],
+    ['R$ 9,90', '9,90'],
+    ['0012', '0,12'],
+  ])('masks %j as %j', (input, out) => {
+    expect(maskBRL(input)).toBe(out)
+  })
+
+  it('round-trips with parseBRL', () => {
+    expect(parseBRL(maskBRL('100000'))).toBe(100000)
+    expect(parseBRL(maskBRL('1234567'))).toBe(1234567)
+  })
+})
 
 describe('parseBRL', () => {
   it.each([

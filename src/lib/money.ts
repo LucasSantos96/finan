@@ -10,6 +10,15 @@ export function splitBRL(cents: number): { int: string; dec: string } {
   return { int, dec }
 }
 
+/** Live input mask: digits fill from the right, "123456" -> "1.234,56". Empty if no non-zero digits. */
+export function maskBRL(input: string): string {
+  const digits = input.replace(/\D/g, '').replace(/^0+/, '').slice(0, 12)
+  if (!digits) return ''
+  const padded = digits.padStart(3, '0')
+  const int = padded.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  return `${int},${padded.slice(-2)}`
+}
+
 /** "1.234,56" | "12,5" | "12.5" | "12" -> cents. Null if invalid or <= 0. */
 export function parseBRL(input: string): number | null {
   let s = input.replace(/R\$/gi, '').replace(/\s/g, '')

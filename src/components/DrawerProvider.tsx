@@ -4,13 +4,14 @@ import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import { createTransaction, updateTransaction } from '@/server/actions'
 import { todayInput } from '@/lib/dates'
+import { maskBRL } from '@/lib/money'
 import type { CategoryOption, TxRow, TxType } from '@/lib/types'
 
 type Ctx = { openNew: () => void; openEdit: (row: TxRow) => void }
 const DrawerCtx = createContext<Ctx>({ openNew() {}, openEdit() {} })
 export const useDrawer = () => useContext(DrawerCtx)
 
-const centsToInput = (c: number) => (c / 100).toFixed(2).replace('.', ',')
+const centsToInput = (c: number) => maskBRL(String(c))
 
 export function DrawerProvider({
   categories,
@@ -171,7 +172,7 @@ export function DrawerProvider({
               inputMode="decimal"
               placeholder="0,00"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => setAmount(maskBRL(e.target.value))}
               className="w-full bg-transparent text-4xl font-semibold tabular-nums outline-none placeholder:text-[var(--border)]"
             />
           </div>

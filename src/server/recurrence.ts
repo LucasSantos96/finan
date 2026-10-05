@@ -10,9 +10,8 @@ export function addMonthsClamped(start: Date, n: number): Date {
 
 export function splitInstallments(totalCents: number, n: number): number[] {
   const base = Math.floor(totalCents / n)
-  const parts = Array<number>(n).fill(base)
-  parts[0] += totalCents - base * n
-  return parts
+  const extra = totalCents - base * n
+  return Array.from({ length: n }, (_, i) => base + (i < extra ? 1 : 0))
 }
 
 export function planInstallments(startDate: Date, totalCents: number, count: number) {

@@ -24,10 +24,18 @@ describe('addMonthsClamped', () => {
 })
 
 describe('splitInstallments', () => {
-  it('puts the remainder on the first part and sums exactly', () => {
+  it('spreads leftover cents one per part from the first, and sums exactly', () => {
     expect(splitInstallments(10000, 3)).toEqual([3334, 3333, 3333])
     expect(splitInstallments(10000, 4)).toEqual([2500, 2500, 2500, 2500])
     expect(splitInstallments(1, 3).reduce((a, b) => a + b, 0)).toBe(1)
+  })
+
+  it('does not dump all leftover cents on the first part (R$ 1.000,00 in 36)', () => {
+    const parts = splitInstallments(100000, 36)
+    expect(parts.slice(0, 28).every((p) => p === 2778)).toBe(true)
+    expect(parts.slice(28).every((p) => p === 2777)).toBe(true)
+    expect(parts.reduce((a, b) => a + b, 0)).toBe(100000)
+    expect(Math.max(...parts) - Math.min(...parts)).toBe(1)
   })
 })
 
