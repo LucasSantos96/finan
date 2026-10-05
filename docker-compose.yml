@@ -1,0 +1,8 @@
+services:
+  finan:
+    build: .
+    ports:
+      - '127.0.0.1:${FINAN_PORT:-3333}:3000'
+    volumes:
+      - ./data:/data
+    restart: unless-stopped

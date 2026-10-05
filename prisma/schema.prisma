@@ -1,0 +1,59 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  color        String
+  kind         String // INCOME | EXPENSE
+  transactions Transaction[]
+  recurrences  Recurrence[]
+}
+
+model Tag {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  transactions Transaction[] @relation("TransactionTags")
+  recurrences  Recurrence[]  @relation("RecurrenceTags")
+}
+
+model Recurrence {
+  id                 Int           @id @default(autoincrement())
+  kind               String // INSTALLMENT | RECURRING
+  type               String // INCOME | EXPENSE
+  startDate          DateTime
+  endDate            DateTime?
+  amountCents        Int // INSTALLMENT: total; RECURRING: per occurrence
+  description        String
+  categoryId         Int
+  category           Category      @relation(fields: [categoryId], references: [id])
+  lastGeneratedUntil DateTime?
+  tags               Tag[]         @relation("RecurrenceTags")
+  transactions       Transaction[]
+}
+
+model Transaction {
+  id               Int         @id @default(autoincrement())
+  type             String // INCOME | EXPENSE
+  amountCents      Int
+  date             DateTime
+  description      String
+  categoryId       Int
+  category         Category    @relation(fields: [categoryId], references: [id])
+  recurrenceId     Int?
+  recurrence       Recurrence? @relation(fields: [recurrenceId], references: [id])
+  installmentNo    Int?
+  installmentTotal Int?
+  isPaid           Boolean     @default(true)
+  tags             Tag[]       @relation("TransactionTags")
+
+  @@index([date])
+  @@index([recurrenceId])
+}

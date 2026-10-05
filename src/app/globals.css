@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0b0e14;
+  --surface: #12161f;
+  --surface-2: #171c27;
+  --border: #1c2230;
+  --text: #e8ecf4;
+  --muted: #7b8497;
+  --blue: #3b82f6;
+  --blue-2: #60a5fa;
+  --orange: #f59e0b;
+  --orange-2: #fb923c;
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-family: var(--font-manrope), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'tnum' 1;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--blue) 40%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue-2);
+  outline-offset: 2px;
+}
+
+.field {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.field:focus {
+  border-color: var(--blue);
+}
+.field::placeholder {
+  color: var(--muted);
+}
+
+/* diagonal stripes, used behind chart bars like the reference */
+.stripes {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 6px,
+    rgb(255 255 255 / 0.035) 6px 7px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
