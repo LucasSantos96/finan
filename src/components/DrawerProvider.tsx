@@ -171,7 +171,7 @@ export function DrawerProvider({
 
           <div>
             <label className="text-xs text-[var(--muted)]">
-              {repeat === 'installments' ? 'Valor total (R$)' : 'Valor (R$)'}
+              {repeat === 'installments' ? (type === 'INCOME' ? 'Valor de cada parcela (R$)' : 'Valor total (R$)') : 'Valor (R$)'}
             </label>
             <input
               ref={amountRef}

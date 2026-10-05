@@ -16,7 +16,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const [categories, tags] = await Promise.all([listCategories(), listTags()])
   return (
     <html lang="pt-BR">
-      <body className={manrope.variable}>
+      <body className={manrope.variable} suppressHydrationWarning>
         <DrawerProvider categories={categories} tags={tags.map((t) => t.name)}>
           <div className="lg:flex">
             <Sidebar />
