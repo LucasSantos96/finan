@@ -20,13 +20,11 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0 \
     TZ=America/Sao_Paulo \
     DATABASE_URL=file:/data/finan.db
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
 COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/node_modules/prisma ./node_modules/prisma
-COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 VOLUME /data
 EXPOSE 3000
 CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node server.js"]
