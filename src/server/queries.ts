@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client'
 import { prisma } from './db'
-import { monthRange, monthShort, shiftMonth, toDateInput } from '@/lib/dates'
+import { currentMonth, monthRange, monthShort, shiftDaysUtc, startOfWeekUtc, toDateInput, todayUtc, weekdayShort } from '@/lib/dates'
 import type { CategoryOption, TxRow, TxType } from '@/lib/types'
 
 const include = { category: true, tags: true } as const
@@ -75,21 +75,83 @@ export async function getSummary(month: string) {
   return { income, expense, balance: paidIn - paidOut }
 }
 
-export async function getCashflow(month: string) {
-  const first = shiftMonth(month, -11)
-  const rows = await prisma.transaction.findMany({
-    where: { date: { gte: monthRange(first).start, lt: monthRange(month).end } },
-    select: { date: true, type: true, amountCents: true },
-  })
-  const buckets = new Map<string, { income: number; expense: number }>()
-  for (let i = 0; i < 12; i++) buckets.set(shiftMonth(first, i), { income: 0, expense: 0 })
-  for (const r of rows) {
-    const b = buckets.get(toDateInput(r.date).slice(0, 7))
-    if (!b) continue
-    if (r.type === 'INCOME') b.income += r.amountCents
-    else b.expense += r.amountCents
+type CashflowPoint = {
+  label: string
+  income: number
+  expense: number
+  incomePaid: number
+  incomePending: number
+  expensePaid: number
+  expensePending: number
+}
+const emptyPoint = (label: string): CashflowPoint => ({
+  label,
+  income: 0,
+  expense: 0,
+  incomePaid: 0,
+  incomePending: 0,
+  expensePaid: 0,
+  expensePending: 0,
+})
+
+export type CashflowGranularity = 'week' | 'month' | 'year'
+
+export async function getCashflow(month: string, granularity: CashflowGranularity = 'month') {
+  const buckets = new Map<string, CashflowPoint>()
+  let start: Date
+  let end: Date
+  let keyOf: (d: Date) => string
+
+  if (granularity === 'week') {
+    const ref = month === currentMonth() ? todayUtc() : monthRange(month).start
+    const ws = startOfWeekUtc(ref)
+    start = ws
+    end = shiftDaysUtc(ws, 7)
+    for (let i = 0; i < 7; i++) {
+      const d = shiftDaysUtc(ws, i)
+      buckets.set(toDateInput(d), emptyPoint(weekdayShort(d)))
+    }
+    keyOf = (d) => toDateInput(d)
+  } else if (granularity === 'year') {
+    const y = Number(month.slice(0, 4))
+    start = new Date(Date.UTC(y, 0, 1))
+    end = new Date(Date.UTC(y + 1, 0, 1))
+    for (let i = 0; i < 12; i++) {
+      const m = `${y}-${String(i + 1).padStart(2, '0')}`
+      buckets.set(m, emptyPoint(monthShort(m)))
+    }
+    keyOf = (d) => toDateInput(d).slice(0, 7)
+  } else {
+    const y = Number(month.slice(0, 4))
+    const mo = Number(month.slice(5, 7))
+    start = monthRange(month).start
+    end = monthRange(month).end
+    const days = new Date(Date.UTC(y, mo, 0)).getUTCDate()
+    for (let i = 1; i <= days; i++) {
+      const d = new Date(Date.UTC(y, mo - 1, i))
+      buckets.set(toDateInput(d), emptyPoint(String(i)))
+    }
+    keyOf = (d) => toDateInput(d)
   }
-  return [...buckets].map(([m, v]) => ({ month: m, label: monthShort(m), ...v }))
+
+  const rows = await prisma.transaction.findMany({
+    where: { date: { gte: start, lt: end } },
+    select: { date: true, type: true, amountCents: true, isPaid: true },
+  })
+  for (const r of rows) {
+    const b = buckets.get(keyOf(r.date))
+    if (!b) continue
+    if (r.type === 'INCOME') {
+      b.income += r.amountCents
+      if (r.isPaid) b.incomePaid += r.amountCents
+      else b.incomePending += r.amountCents
+    } else {
+      b.expense += r.amountCents
+      if (r.isPaid) b.expensePaid += r.amountCents
+      else b.expensePending += r.amountCents
+    }
+  }
+  return [...buckets].map(([key, v]) => ({ key, ...v }))
 }
 
 export async function getByCategory(month: string) {
@@ -150,4 +212,13 @@ export async function listTags() {
     include: { _count: { select: { transactions: true } } },
   })
   return rows.map((t) => ({ id: t.id, name: t.name, count: t._count.transactions }))
+}
+
+export async function listPending(): Promise<TxRow[]> {
+  const rows = await prisma.transaction.findMany({
+    where: { isPaid: false },
+    include,
+    orderBy: [{ date: 'asc' }, { id: 'asc' }],
+  })
+  return rows.map(toRow)
 }

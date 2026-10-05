@@ -2,11 +2,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { ArrowLeftRight, LayoutDashboard, Menu, Repeat, Tags, X } from 'lucide-react'
+import { ArrowLeftRight, HandCoins, LayoutDashboard, Menu, Repeat, Tags, X } from 'lucide-react'
 
 const items = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/transacoes', label: 'Transações', icon: ArrowLeftRight },
+  { href: '/contas', label: 'Contas', icon: HandCoins },
   { href: '/recorrentes', label: 'Recorrentes', icon: Repeat },
   { href: '/categorias', label: 'Categorias', icon: Tags },
 ]

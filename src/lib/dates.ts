@@ -31,6 +31,23 @@ export function shiftMonth(m: string, delta: number): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
+export function shiftDaysUtc(d: Date, delta: number): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + delta))
+}
+
+export function startOfWeekUtc(d: Date): Date {
+  const day = (d.getUTCDay() + 6) % 7
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day))
+}
+
+export function dayMonthShort(d: Date): string {
+  return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' }).format(d)
+}
+
+export function weekdayShort(d: Date): string {
+  return new Intl.DateTimeFormat('pt-BR', { weekday: 'short', timeZone: 'UTC' }).format(d).replace('.', '')
+}
+
 export function formatDate(d: Date | string): string {
   const date = typeof d === 'string' ? parseDateInput(d.slice(0, 10)) : d
   return new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' }).format(date)

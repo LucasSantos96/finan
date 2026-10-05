@@ -122,7 +122,8 @@ export async function createTransaction(input: TxInput): Promise<Result> {
           recurrenceId: rec.id,
           installmentNo: p.no,
           installmentTotal: n,
-          isPaid: p.date <= today,
+          // installments start pending; the user settles each one in /contas
+          isPaid: false,
           tags: { connectOrCreate: tags },
         },
       }),
