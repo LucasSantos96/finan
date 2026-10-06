@@ -3,14 +3,11 @@ import { Card, Money } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { MonthPicker } from '@/components/MonthPicker'
 import { TransactionsTable } from '@/components/TransactionsTable'
-import { Pagination } from '@/components/Pagination'
 import { CashflowChart } from '@/components/charts/CashflowChart'
 import { CategoryDonut } from '@/components/charts/CategoryDonut'
 import { currentMonth, formatDate, monthLabel, todayInput } from '@/lib/dates'
 import { formatBRL } from '@/lib/money'
-import { countTransactions, getByCategory, getCashflow, getSummary, listTransactions } from '@/server/queries'
-
-const RECENT_PAGE_SIZE = 8
+import { getByCategory, getCashflow, getSummary, listTransactions } from '@/server/queries'
 
 const ranges = [
   { key: 'week', label: 'Semana' },
@@ -23,18 +20,14 @@ export default async function Dashboard({
 }: {
   searchParams: Promise<{ m?: string; g?: string; p?: string }>
 }) {
-  const { m, g, p } = await searchParams
+  const { m, g } = await searchParams
   const month = m && /^\d{4}-\d{2}$/.test(m) ? m : currentMonth()
   const granularity = g === 'week' || g === 'year' ? g : 'month'
-  const recentFilter = { month }
-  const totalRecent = await countTransactions(recentFilter)
-  const totalPages = Math.max(1, Math.ceil(totalRecent / RECENT_PAGE_SIZE))
-  const page = Math.min(Math.max(1, Number(p) || 1), totalPages)
   const [summary, cashflow, byCategory, recent] = await Promise.all([
     getSummary(month),
     getCashflow(month, granularity),
     getByCategory(month),
-    listTransactions({ ...recentFilter, pageSize: RECENT_PAGE_SIZE, page }),
+    listTransactions({ month, sort: 'added', dir: 'desc' }),
   ])
   const income = cashflow.reduce((a, d) => a + d.income, 0)
   const expense = cashflow.reduce((a, d) => a + d.expense, 0)
@@ -131,13 +124,7 @@ export default async function Dashboard({
 
       <Card className="mt-4">
         <p className="mb-2 text-sm">Últimas transações</p>
-        <TransactionsTable rows={recent} />
-        <Pagination
-          page={page}
-          totalPages={totalPages}
-          basePath="/"
-          params={{ m: month, ...(granularity === 'month' ? {} : { g: granularity }) }}
-        />
+        <TransactionsTable rows={recent} recent />
       </Card>
     </>
   )

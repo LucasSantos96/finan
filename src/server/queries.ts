@@ -31,7 +31,7 @@ export type TxFilters = {
   tag?: string
   status?: 'paid' | 'pending'
   q?: string
-  sort?: 'date' | 'amount'
+  sort?: 'date' | 'amount' | 'added'
   dir?: 'asc' | 'desc'
   take?: number
   page?: number
@@ -60,7 +60,10 @@ export async function listTransactions(f: TxFilters = {}): Promise<TxRow[]> {
   const rows = await prisma.transaction.findMany({
     where: txWhere(f),
     include,
-    orderBy: [f.sort === 'amount' ? { amountCents: dir } : { date: dir }, { id: 'desc' }],
+    orderBy:
+      f.sort === 'added'
+        ? { id: dir }
+        : [f.sort === 'amount' ? { amountCents: dir } : { date: dir }, { id: 'desc' }],
     take: pageSize,
     skip: pageSize ? (page - 1) * pageSize : undefined,
   })
