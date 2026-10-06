@@ -34,9 +34,11 @@ export type TxFilters = {
   sort?: 'date' | 'amount'
   dir?: 'asc' | 'desc'
   take?: number
+  page?: number
+  pageSize?: number
 }
 
-export async function listTransactions(f: TxFilters = {}): Promise<TxRow[]> {
+function txWhere(f: TxFilters): Prisma.TransactionWhereInput {
   const where: Prisma.TransactionWhereInput = {}
   if (f.month) {
     const { start, end } = monthRange(f.month)
@@ -48,14 +50,25 @@ export async function listTransactions(f: TxFilters = {}): Promise<TxRow[]> {
   if (f.status === 'paid') where.isPaid = true
   if (f.status === 'pending') where.isPaid = false
   if (f.q) where.description = { contains: f.q }
+  return where
+}
+
+export async function listTransactions(f: TxFilters = {}): Promise<TxRow[]> {
   const dir = f.dir ?? 'desc'
+  const pageSize = f.pageSize ?? f.take
+  const page = Math.max(1, f.page ?? 1)
   const rows = await prisma.transaction.findMany({
-    where,
+    where: txWhere(f),
     include,
     orderBy: [f.sort === 'amount' ? { amountCents: dir } : { date: dir }, { id: 'desc' }],
-    take: f.take,
+    take: pageSize,
+    skip: pageSize ? (page - 1) * pageSize : undefined,
   })
   return rows.map(toRow)
+}
+
+export function countTransactions(f: TxFilters = {}) {
+  return prisma.transaction.count({ where: txWhere(f) })
 }
 
 async function sum(where: Prisma.TransactionWhereInput): Promise<number> {
@@ -68,7 +81,7 @@ export async function getSummary(month: string) {
   const date = { gte: start, lt: end }
   const [income, expense, paidIn, paidOut] = await Promise.all([
     sum({ type: 'INCOME', date }),
-    sum({ type: 'EXPENSE', date }),
+    sum({ type: 'EXPENSE', date, isPaid: true }),
     sum({ type: 'INCOME', isPaid: true }),
     sum({ type: 'EXPENSE', isPaid: true }),
   ])
@@ -214,9 +227,9 @@ export async function listTags() {
   return rows.map((t) => ({ id: t.id, name: t.name, count: t._count.transactions }))
 }
 
-export async function listPending(): Promise<TxRow[]> {
+export async function listPending(range?: { start: Date; end: Date }): Promise<TxRow[]> {
   const rows = await prisma.transaction.findMany({
-    where: { isPaid: false },
+    where: { isPaid: false, ...(range ? { date: { gte: range.start, lt: range.end } } : {}) },
     include,
     orderBy: [{ date: 'asc' }, { id: 'asc' }],
   })
