@@ -5,4 +5,22 @@ services:
       - '127.0.0.1:${FINAN_PORT:-3333}:3000'
     volumes:
       - ./data:/data
+    environment:
+      - WUZAPI_URL=http://wuzapi:8088
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-nvidia/nemotron-3-ultra-550b-a55b:free}
+      - OPENROUTER_VISION_MODEL=${OPENROUTER_VISION_MODEL:-google/gemma-4-26b-a4b-it:free}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+    restart: unless-stopped
+
+  wuzapi:
+    image: agent-zap-wuzapi:local
+    ports:
+      - '127.0.0.1:${WUZAPI_PORT:-8088}:8088'
+    volumes:
+      - ./wuzapi-data:/data
+    environment:
+      - WUZAPI_ADMIN_TOKEN=${WUZAPI_ADMIN_TOKEN}
+      - WUZAPI_GLOBAL_ENCRYPTION_KEY=${WUZAPI_GLOBAL_ENCRYPTION_KEY}
+      - WUZAPI_GLOBAL_HMAC_KEY=${WUZAPI_GLOBAL_HMAC_KEY}
     restart: unless-stopped
