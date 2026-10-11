@@ -4,6 +4,7 @@ import {
   extractPhone,
   isAllowed,
   getSenderName,
+  ALLOWED,
   sendText,
   isMediaMessage,
   isImage,
@@ -36,6 +37,7 @@ export async function POST(req: Request) {
   }
 
   const senderName = getSenderName(phone)
+  const otherName = Object.values(ALLOWED).find((n) => n !== senderName) ?? ''
   const isMedia = isMediaMessage(data)
   const text = getMessageText(data)
 
@@ -71,7 +73,7 @@ export async function POST(req: Request) {
     const agent = mastra.getAgent(agentId)
 
     const result = await agent.generate(prompt, {
-      instructions: `Você está conversando com ${senderName} via WhatsApp.`,
+      system: `Quem está falando com você agora, via WhatsApp, é ${senderName} (número ${phone}). Dirija-se a ${senderName} pelo nome e converse de forma natural e personalizada. Não confunda com a outra pessoa autorizada: ${otherName}.`,
       memory: {
         thread: { id: `whatsapp-${phone}` },
         resource: phone,
