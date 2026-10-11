@@ -1,42 +1,37 @@
 import { NextResponse } from 'next/server'
 
 const WUZAPI_URL = process.env.WUZAPI_URL || 'http://wuzapi:8088'
+const USER_TOKEN = process.env.WUZAPI_USER_TOKEN || 'finan-whatsapp-token'
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url)
-  const instance = searchParams.get('instance')
-  const token = searchParams.get('token')
-
-  if (!instance || !token) {
-    return NextResponse.json({ error: 'instance e token são obrigatórios' }, { status: 400 })
-  }
-
+export async function GET() {
   try {
-    const statusRes = await fetch(`${WUZAPI_URL}/chat/status/${instance}`, {
-      headers: { 'Authorization': `Bearer ${token}` },
+    const statusRes = await fetch(`${WUZAPI_URL}/session/status`, {
+      headers: { 'Token': USER_TOKEN },
     })
     if (statusRes.ok) {
-      const statusData = await statusRes.json()
-      if (statusData?.connected) {
+      const data = await statusRes.json()
+      if (data?.data?.loggedIn) {
         return NextResponse.json({ connected: true })
       }
     }
 
-    const qrRes = await fetch(`${WUZAPI_URL}/chat/qr/${instance}`, {
-      headers: { 'Authorization': `Bearer ${token}` },
+    const qrRes = await fetch(`${WUZAPI_URL}/session/qr`, {
+      headers: { 'Token': USER_TOKEN },
     })
 
     if (!qrRes.ok) {
       return NextResponse.json({ error: 'QR ainda não disponível' }, { status: 404 })
     }
 
-    const data = await qrRes.json()
-    if (data?.qr) {
-      return NextResponse.json({ qr: data.qr })
+    const qrData = await qrRes.json()
+    const base64 = String(qrData?.data?.QRCode ?? '').replace(/^data:image\/png;base64,/, '')
+
+    if (base64) {
+      return NextResponse.json({ qr: base64 })
     }
 
     return NextResponse.json({ waiting: true })
   } catch (e) {
-    return NextResponse.json({ error: `Erro: ${e}` }, { status: 500 })
+    return NextResponse.json({ error: String(e) }, { status: 500 })
   }
 }

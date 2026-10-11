@@ -6,6 +6,8 @@ import {
   getSenderName,
   sendText,
   isMediaMessage,
+  isImage,
+  fetchMediaBase64,
   getMessageText,
 } from './wuzapi'
 import type { WuzapiWebhookData } from './wuzapi'
@@ -38,18 +40,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'empty message' }, { status: 400 })
   }
 
-  const userPrompt = isMedia
-    ? text
-      ? `[O usuário enviou uma mídia do tipo "${data.type}" com a legenda: "${text}"]\n\nPor favor, analise a imagem/documento e responda à solicitação do usuário.`
-      : `[O usuário enviou uma mídia do tipo "${data.type}"]\n\nPor favor, analise a imagem/documento e responda ao usuário.`
-    : text
-
   const agentId = isMedia ? 'financas-visao' : 'financas'
+  let prompt: string | { role: 'user'; content: ({ type: 'text'; text: string } | { type: 'image'; image: string; mimeType: string })[] }
+
+  if (isMedia && isImage(data) && data.media?.url) {
+    const mediaData = await fetchMediaBase64(data.media.url)
+    if (mediaData) {
+      prompt = {
+        role: 'user',
+        content: [
+          { type: 'image', image: mediaData.base64, mimeType: mediaData.mimeType },
+          { type: 'text', text: text || `Analise esta imagem e responda ao usuário.` },
+        ],
+      }
+    } else {
+      prompt = text || `[O usuário enviou uma imagem, mas não foi possível baixá-la.]`
+    }
+  } else if (isMedia) {
+    prompt = text
+      ? `[O usuário enviou uma mídia do tipo "${data.type}" com a legenda: "${text}"]`
+      : `[O usuário enviou uma mídia do tipo "${data.type}"]`
+  } else {
+    prompt = text
+  }
 
   try {
     const agent = mastra.getAgent(agentId)
 
-    const result = await agent.generate(userPrompt, {
+    const result = await agent.generate(prompt, {
       instructions: `Você está conversando com ${senderName} via WhatsApp.`,
       memory: {
         thread: { id: `whatsapp-${phone}` },

@@ -1,4 +1,5 @@
 const WUZAPI_URL = process.env.WUZAPI_URL || 'http://wuzapi:8088'
+const WUZAPI_USER_TOKEN = process.env.WUZAPI_USER_TOKEN || 'finan-whatsapp-token'
 
 const ALLOWED: Record<string, string> = {
   '5522981073895': 'Lucas',
@@ -37,7 +38,10 @@ export async function sendText(phone: string, body: string) {
   const url = `${WUZAPI_URL}/chat/send/text`
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Token': WUZAPI_USER_TOKEN,
+    },
     body: JSON.stringify({ phone, body }),
   })
   if (!res.ok) {
@@ -56,8 +60,31 @@ export function isMediaMessage(data: WuzapiWebhookData): boolean {
   return mediaTypes.includes(data.type || '')
 }
 
+export function isImage(data: WuzapiWebhookData): boolean {
+  return data.type === 'image'
+}
+
+export async function fetchMediaBase64(mediaUrl: string): Promise<{ base64: string; mimeType: string } | null> {
+  try {
+    const res = await fetch(mediaUrl, {
+      headers: { 'Token': WUZAPI_USER_TOKEN },
+    })
+    if (!res.ok) return null
+    const buffer = await res.arrayBuffer()
+    const base64 = Buffer.from(buffer).toString('base64')
+    const mimeType = res.headers.get('content-type') || 'image/jpeg'
+    return { base64, mimeType }
+  } catch {
+    return null
+  }
+}
+
 export function getMessageText(data: WuzapiWebhookData): string {
   return data.body || data.caption || ''
 }
 
-export { ALLOWED }
+export function getUserToken() {
+  return WUZAPI_USER_TOKEN
+}
+
+export { ALLOWED, WUZAPI_URL }
