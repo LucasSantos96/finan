@@ -9,27 +9,30 @@ import {
   isImage,
   fetchMediaBase64,
   getMessageText,
+  parseWuzapiWebhook,
 } from './wuzapi'
-import type { WuzapiWebhookData } from './wuzapi'
 
 export async function POST(req: Request) {
-  let payload: WuzapiWebhookData | { data?: WuzapiWebhookData }
+  let raw: unknown
   try {
-    payload = await req.json()
+    const ct = req.headers.get('content-type') || ''
+    raw = ct.includes('json') ? await req.json() : Object.fromEntries(new URLSearchParams(await req.text()))
   } catch {
-    return NextResponse.json({ error: 'invalid json' }, { status: 400 })
+    return NextResponse.json({ error: 'invalid body' }, { status: 400 })
   }
 
-  const data: WuzapiWebhookData = (payload as { data?: WuzapiWebhookData }).data ?? (payload as WuzapiWebhookData)
+  const data = parseWuzapiWebhook(raw)
+  // Not a user message (presence, receipts, own messages...): ack so Wuzapi doesn't retry
+  if (!data) return NextResponse.json({ ignored: true })
   const phone = extractPhone(data)
 
   if (!phone) {
-    return NextResponse.json({ error: 'missing phone' }, { status: 400 })
+    return NextResponse.json({ ignored: true })
   }
 
   if (!isAllowed(phone)) {
     console.log(`whatsapp: acesso negado para ${phone}`)
-    return NextResponse.json({ blocked: true }, { status: 403 })
+    return NextResponse.json({ blocked: true })
   }
 
   const senderName = getSenderName(phone)
@@ -37,7 +40,7 @@ export async function POST(req: Request) {
   const text = getMessageText(data)
 
   if (!isMedia && !text) {
-    return NextResponse.json({ error: 'empty message' }, { status: 400 })
+    return NextResponse.json({ ignored: true })
   }
 
   const agentId = isMedia ? 'financas-visao' : 'financas'
