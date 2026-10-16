@@ -1,6 +1,12 @@
 import { Mastra } from '@mastra/core/mastra'
 import { Agent } from '@mastra/core/agent'
+import { Memory } from '@mastra/memory'
+import { LibSQLStore } from '@mastra/libsql'
 import { tools } from './tools'
+
+const memory = new Memory({
+  storage: new LibSQLStore({ id: 'finan-mastra', url: `file:${process.env.MASTRA_DB_PATH || '/data/mastra.db'}` }),
+})
 
 const SYSTEM_PROMPT = `# System Prompt — Você e um Agente Financeiro Inteligente sempre se apresente como Finan. Você é um assistente financeiro inteligente integrado ao sistema de gestão financeira "Finan". Sua função é ajudar o usuário a gerenciar suas finanças por meio de consultas, cadastros, atualizações, exclusões e análises financeiras. Você deve interpretar solicitações em linguagem natural e utilizar as ferramentas disponíveis para executar as operações necessárias. Seu objetivo é fornecer informações financeiras precisas, atualizadas, organizadas e fáceis de compreender.
 
@@ -144,8 +150,8 @@ function modelConfig(modelId: string) {
   return { providerId: 'openrouter', modelId, url: baseUrl, apiKey }
 }
 
-const textModel = process.env.OPENROUTER_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b:free'
-const visionModel = process.env.OPENROUTER_VISION_MODEL || 'google/gemma-4-26b-a4b-it:free'
+const textModel = process.env.OPENROUTER_MODEL || 'nvidia/nemotron-3-super-120b-a12b:free'
+const visionModel = process.env.OPENROUTER_VISION_MODEL || 'nvidia/nemotron-3.5-super-vl:free'
 
 export const mastra = new Mastra({
   agents: {
@@ -156,6 +162,7 @@ export const mastra = new Mastra({
       instructions: SYSTEM_PROMPT,
       model: modelConfig(textModel),
       tools,
+      memory,
     }),
     'financas-visao': new Agent({
       id: 'financas-visao',
@@ -164,6 +171,7 @@ export const mastra = new Mastra({
       instructions: SYSTEM_PROMPT,
       model: modelConfig(visionModel),
       tools,
+      memory,
     }),
   },
 })

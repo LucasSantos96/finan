@@ -11,8 +11,8 @@ services:
       - WUZAPI_ADMIN_TOKEN=${WUZAPI_ADMIN_TOKEN}
       - WUZAPI_WEBHOOK_URL=http://finan:3000/api/whatsapp/webhook
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-nvidia/nemotron-3-ultra-550b-a55b:free}
-      - OPENROUTER_VISION_MODEL=${OPENROUTER_VISION_MODEL:-google/gemma-4-26b-a4b-it:free}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-nvidia/nemotron-3-super-120b-a12b:free}
+      - OPENROUTER_VISION_MODEL=${OPENROUTER_VISION_MODEL:-nvidia/nemotron-3.5-super-vl:free}
       - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
     restart: unless-stopped
 

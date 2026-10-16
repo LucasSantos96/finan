@@ -10,7 +10,9 @@ RUN apk add --no-cache openssl
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npx prisma generate && npm run build
+# Next's "collect page data" build step imports route modules, which eagerly open the
+# Mastra memory SQLite file; /data is only a real volume at runtime, so create it here too.
+RUN mkdir -p /data && npx prisma generate && npm run build
 
 FROM node:22-alpine AS run
 RUN apk add --no-cache openssl tzdata
@@ -24,6 +26,8 @@ RUN mkdir /prisma-cli && cd /prisma-cli && npm init -y >/dev/null && npm i prism
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/node_modules/@prisma/client ./node_modules/@prisma/client
+# Next's standalone trace misses libsql's platform-specific native binding (musl on alpine).
+COPY --from=build /app/node_modules/@libsql/linux-x64-musl ./node_modules/@libsql/linux-x64-musl
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
 COPY --from=build /app/prisma ./prisma

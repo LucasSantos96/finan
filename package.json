@@ -12,7 +12,9 @@
     "db:migrate": "prisma migrate dev"
   },
   "dependencies": {
-    "@mastra/next": "^0.2.33",
+    "@mastra/libsql": "^1.26.2",
+    "@mastra/memory": "^1.38.0",
+    "@mastra/next": "^0.2.36",
     "@prisma/client": "^6.19.3",
     "hono": "^4.13.13",
     "lucide-react": "^1.52.0",
