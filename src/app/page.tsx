@@ -15,7 +15,11 @@ const ranges = [
   { key: 'year', label: 'Ano' },
 ] as const
 
-export default async function Dashboard({ searchParams }: { searchParams: Promise<{ m?: string; g?: string }> }) {
+export default async function Dashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ m?: string; g?: string; p?: string }>
+}) {
   const { m, g } = await searchParams
   const month = m && /^\d{4}-\d{2}$/.test(m) ? m : currentMonth()
   const granularity = g === 'week' || g === 'year' ? g : 'month'
@@ -23,7 +27,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     getSummary(month),
     getCashflow(month, granularity),
     getByCategory(month),
-    listTransactions({ month, take: 8 }),
+    listTransactions({ month, sort: 'added', dir: 'desc' }),
   ])
   const income = cashflow.reduce((a, d) => a + d.income, 0)
   const expense = cashflow.reduce((a, d) => a + d.expense, 0)
@@ -120,7 +124,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
       <Card className="mt-4">
         <p className="mb-2 text-sm">Últimas transações</p>
-        <TransactionsTable rows={recent} />
+        <TransactionsTable rows={recent} recent />
       </Card>
     </>
   )

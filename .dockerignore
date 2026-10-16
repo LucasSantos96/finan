@@ -2,6 +2,7 @@ node_modules
 .next
 .git
 data
+wuzapi-data
 *.db
 docs
 .env

@@ -17,7 +17,7 @@ export default async function Categorias() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <p className="mb-4 text-sm text-[var(--blue-2)]">Entradas</p>
-          <div className="space-y-3">
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
             {income.map((c) => (
               <CategoryRow key={c.id} cat={c} />
             ))}
@@ -25,7 +25,7 @@ export default async function Categorias() {
         </Card>
         <Card>
           <p className="mb-4 text-sm text-[var(--orange-2)]">Saídas</p>
-          <div className="space-y-3">
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
             {expense.map((c) => (
               <CategoryRow key={c.id} cat={c} />
             ))}
@@ -37,7 +37,7 @@ export default async function Categorias() {
         {tags.length === 0 ? (
           <p className="text-sm text-[var(--muted)]">Tags são criadas ao lançar (campo “Tags”).</p>
         ) : (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid max-h-[60vh] gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
             {tags.map((t) => (
               <TagRow key={t.id} tag={t} />
             ))}

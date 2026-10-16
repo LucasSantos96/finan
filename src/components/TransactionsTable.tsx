@@ -1,6 +1,6 @@
 'use client'
-import { useState, useTransition } from 'react'
-import { Check, Pencil, Trash2 } from 'lucide-react'
+import { useMemo, useState, useTransition } from 'react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, Pencil, Trash2 } from 'lucide-react'
 import { deleteTransaction, togglePaid } from '@/server/actions'
 import { formatBRL } from '@/lib/money'
 import { formatDate } from '@/lib/dates'
@@ -9,10 +9,48 @@ import { StatusPill } from './ui'
 import { useDrawer } from './DrawerProvider'
 import { ScopeDialog } from './ScopeDialog'
 
-export function TransactionsTable({ rows }: { rows: TxRow[] }) {
+type SortKey = 'description' | 'date' | 'categoryName' | 'amountCents' | 'isPaid'
+type Dir = 'asc' | 'desc'
+
+const columns: { key: SortKey; label: string; align?: 'right'; className?: string }[] = [
+  { key: 'description', label: 'Descrição', className: 'py-3' },
+  { key: 'date', label: 'Data' },
+  { key: 'categoryName', label: 'Categoria' },
+  { key: 'amountCents', label: 'Valor', align: 'right' },
+  { key: 'isPaid', label: 'Status', className: 'pl-4' },
+]
+
+function compare(a: TxRow, b: TxRow, key: SortKey): number {
+  switch (key) {
+    case 'description':
+      return a.description.localeCompare(b.description, 'pt-BR')
+    case 'date':
+      return a.date.localeCompare(b.date)
+    case 'categoryName':
+      return a.categoryName.localeCompare(b.categoryName, 'pt-BR')
+    case 'amountCents':
+      return a.amountCents - b.amountCents
+    case 'isPaid':
+      return Number(a.isPaid) - Number(b.isPaid)
+  }
+}
+
+export function TransactionsTable({ rows, recent = false }: { rows: TxRow[]; recent?: boolean }) {
   const { openEdit } = useDrawer()
   const [, start] = useTransition()
   const [deleting, setDeleting] = useState<TxRow | null>(null)
+  // null = server order (last added first in the dashboard)
+  const [sort, setSort] = useState<{ key: SortKey; dir: Dir } | null>(null)
+
+  const sorted = useMemo(() => {
+    if (!sort) return rows
+    const sign = sort.dir === 'asc' ? 1 : -1
+    // ties fall back to last added first
+    return [...rows].sort((a, b) => sign * compare(a, b, sort.key) || b.id - a.id)
+  }, [rows, sort])
+
+  const toggle = (key: SortKey) =>
+    setSort((cur) => (cur?.key === key ? { key, dir: cur.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
 
   if (rows.length === 0) {
     return <p className="py-10 text-center text-sm text-[var(--muted)]">Nenhum lançamento.</p>
@@ -25,20 +63,38 @@ export function TransactionsTable({ rows }: { rows: TxRow[] }) {
     })
 
   return (
-    <div className="overflow-x-auto">
+    <div className={recent ? 'max-h-[420px] overflow-auto' : 'overflow-x-auto'}>
       <table className="w-full min-w-[640px] text-sm">
-        <thead>
+        <thead className={recent ? 'sticky top-0 z-10 bg-[var(--surface)]' : ''}>
           <tr className="border-b border-[var(--border)] text-left text-xs text-[var(--muted)]">
-            <th className="py-3 font-normal">Descrição</th>
-            <th className="font-normal">Data</th>
-            <th className="font-normal">Categoria</th>
-            <th className="text-right font-normal">Valor</th>
-            <th className="pl-4 font-normal">Status</th>
+            {columns.map((c) => {
+              const active = sort?.key === c.key
+              const Icon = !active ? ArrowUpDown : sort?.dir === 'asc' ? ArrowUp : ArrowDown
+              const align = c.align === 'right' ? 'text-right' : ''
+              return (
+                <th key={c.key} className={`font-normal ${align} ${c.className ?? ''}`}>
+                  {recent ? (
+                    <button
+                      type="button"
+                      onClick={() => toggle(c.key)}
+                      className={`inline-flex items-center gap-1 rounded-md py-3 transition-colors hover:text-[var(--text)] ${
+                        active ? 'text-[var(--text)]' : ''
+                      } ${c.align === 'right' ? 'flex-row-reverse' : ''}`}
+                    >
+                      {c.label}
+                      <Icon size={13} className={active ? 'text-[var(--blue-2)]' : 'opacity-40'} />
+                    </button>
+                  ) : (
+                    c.label
+                  )}
+                </th>
+              )
+            })}
             <th />
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
+          {sorted.map((r) => (
             <tr key={r.id} className="border-b border-[var(--border)]/60 last:border-0">
               <td className="py-3">
                 <div>{r.description}</div>

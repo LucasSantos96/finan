@@ -1,13 +1,31 @@
 import Link from 'next/link'
 import { Card, Money } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
+import { MonthPicker } from '@/components/MonthPicker'
 import { SettleButton } from '@/components/SettleButton'
 import { formatBRL } from '@/lib/money'
-import { dayMonthShort, monthLabel, parseDateInput, shiftMonth, todayUtc, toDateInput } from '@/lib/dates'
+import {
+  currentMonth,
+  dayMonthShort,
+  formatDate,
+  monthLabel,
+  monthRange,
+  parseDateInput,
+  shiftDaysUtc,
+  startOfWeekUtc,
+  todayUtc,
+  toDateInput,
+} from '@/lib/dates'
 import type { TxRow, TxType } from '@/lib/types'
 import { listPending } from '@/server/queries'
 
 const DAY = 86_400_000
+
+const ranges = [
+  { key: 'week', label: 'Semana' },
+  { key: 'month', label: 'Mês' },
+  { key: 'year', label: 'Ano' },
+] as const
 
 function dueText(date: string, today: Date) {
   const diff = Math.round((parseDateInput(date).getTime() - today.getTime()) / DAY)
@@ -17,31 +35,16 @@ function dueText(date: string, today: Date) {
   return { text: `em ${diff} dias`, late: false }
 }
 
-function Ledger({
-  type,
-  rows,
-  today,
-  showAll,
-}: {
-  type: TxType
-  rows: TxRow[]
-  today: Date
-  showAll: boolean
-}) {
+function Ledger({ type, rows, today }: { type: TxType; rows: TxRow[]; today: Date }) {
   const income = type === 'INCOME'
   const todayStr = toDateInput(today)
-  const thisMonth = todayStr.slice(0, 7)
-  const cutoff = shiftMonth(thisMonth, 1) // through end of next month unless "ver tudo"
   const total = rows.reduce((a, r) => a + r.amountCents, 0)
   const overdue = rows.filter((r) => r.date < todayStr)
   const overdueCents = overdue.reduce((a, r) => a + r.amountCents, 0)
 
   const upcoming = rows.filter((r) => r.date >= todayStr)
-  const visible = showAll ? upcoming : upcoming.filter((r) => r.date.slice(0, 7) <= cutoff)
-  const hidden = upcoming.length - visible.length
-
   const byMonth = new Map<string, TxRow[]>()
-  for (const r of visible) {
+  for (const r of upcoming) {
     const k = r.date.slice(0, 7)
     byMonth.set(k, [...(byMonth.get(k) ?? []), r])
   }
@@ -86,7 +89,7 @@ function Ledger({
 
       {rows.length === 0 ? (
         <p className="py-10 text-center text-sm text-[var(--muted)]">
-          {income ? 'Nada a receber. Tudo em dia.' : 'Nenhuma conta pendente. Tudo em dia.'}
+          {income ? 'Nada a receber neste período.' : 'Nenhuma conta pendente neste período.'}
         </p>
       ) : (
         <div className="mt-5 space-y-5">
@@ -116,34 +119,72 @@ function Ledger({
               </ul>
             </section>
           ))}
-          {hidden > 0 && (
-            <Link href="/contas?tudo=1" className="block text-center text-xs text-[var(--muted)] hover:text-[var(--text)]">
-              Ver mais {hidden} pendente(s) nos meses seguintes
-            </Link>
-          )}
         </div>
       )}
     </Card>
   )
 }
 
-export default async function Contas({ searchParams }: { searchParams: Promise<{ tudo?: string }> }) {
-  const sp = await searchParams
-  const rows = await listPending()
+export default async function Contas({ searchParams }: { searchParams: Promise<{ m?: string; g?: string }> }) {
+  const { m, g } = await searchParams
+  const month = m && /^\d{4}-\d{2}$/.test(m) ? m : currentMonth()
+  const granularity = g === 'week' || g === 'year' ? g : 'month'
   const today = todayUtc()
-  const showAll = sp.tudo === '1'
+
+  // same period rules as the dashboard cashflow: week containing today (or the first week of the month), month, or year
+  let start: Date
+  let end: Date
+  let period: string
+  if (granularity === 'week') {
+    const ref = month === currentMonth() ? today : monthRange(month).start
+    start = startOfWeekUtc(ref)
+    end = shiftDaysUtc(start, 7)
+    period = `${formatDate(start).slice(0, 5)} a ${formatDate(shiftDaysUtc(start, 6)).slice(0, 5)}`
+  } else if (granularity === 'year') {
+    const y = Number(month.slice(0, 4))
+    start = new Date(Date.UTC(y, 0, 1))
+    end = new Date(Date.UTC(y + 1, 0, 1))
+    period = String(y)
+  } else {
+    ;({ start, end } = monthRange(month))
+    period = monthLabel(month)
+  }
+
+  const rows = await listPending({ start, end })
+
   return (
     <>
       <PageHeader title="Contas" subtitle="Pendências a pagar e a receber. Dê baixa conforme for acontecendo." />
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Ledger type="INCOME" rows={rows.filter((r) => r.type === 'INCOME')} today={today} showAll={showAll} />
-        <Ledger type="EXPENSE" rows={rows.filter((r) => r.type === 'EXPENSE')} today={today} showAll={showAll} />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <nav aria-label="Período das contas" className="grid grid-cols-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-0.5">
+          {ranges.map((r) => {
+            const active = granularity === r.key
+            return (
+              <Link
+                key={r.key}
+                href={`/contas?${new URLSearchParams({ m: month, ...(r.key === 'month' ? {} : { g: r.key }) })}`}
+                aria-current={active ? 'page' : undefined}
+                scroll={false}
+                className={`rounded-[10px] px-3.5 py-1.5 text-center text-xs font-medium transition-colors ${
+                  active
+                    ? 'bg-[var(--surface-2)] text-[var(--text)] shadow-[inset_0_0_0_1px_var(--border)]'
+                    : 'text-[var(--muted)] hover:text-[var(--text)]'
+                }`}
+              >
+                {r.label}
+              </Link>
+            )
+          })}
+        </nav>
+        <div className="flex items-center gap-3">
+          <p className="text-xs capitalize text-[var(--muted)]">{period}</p>
+          <MonthPicker month={month} basePath="/contas" extra={granularity === 'month' ? {} : { g: granularity }} />
+        </div>
       </div>
-      {showAll && (
-        <Link href="/contas" className="mt-4 block text-center text-xs text-[var(--muted)] hover:text-[var(--text)]">
-          Mostrar só os próximos 2 meses
-        </Link>
-      )}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Ledger type="INCOME" rows={rows.filter((r) => r.type === 'INCOME')} today={today} />
+        <Ledger type="EXPENSE" rows={rows.filter((r) => r.type === 'EXPENSE')} today={today} />
+      </div>
     </>
   )
 }

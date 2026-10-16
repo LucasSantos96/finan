@@ -17,3 +17,18 @@ export type TxRow = {
 }
 
 export type CategoryOption = { id: number; name: string; color: string; kind: TxType }
+
+export type RecurrenceRow = {
+  id: number
+  kind: 'INSTALLMENT' | 'RECURRING'
+  type: TxType
+  description: string
+  amountCents: number
+  categoryName: string
+  categoryColor: string
+  endDate: string | null
+  total: number
+  pendingCount: number
+  pendingCents: number
+  nextDate: string | null
+}
